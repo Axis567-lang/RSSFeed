@@ -1,16 +1,19 @@
 package io.github.axis567_lang.rssfeed
 
+import android.content.Context
 import android.os.AsyncTask
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.util.Log
-import java.io.BufferedReader
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import java.io.IOException
-import java.io.InputStreamReader
 import java.lang.Exception
-import java.net.HttpURLConnection
 import java.net.MalformedURLException
 import java.net.URL
+import kotlin.properties.Delegates
+
+
 //      CLASE PARA INGRESAR LOS DATOS
 class FeedEntry
 {
@@ -35,14 +38,29 @@ class MainActivity : AppCompatActivity()
     {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+        Log.d(TAG, "onCreate")
+        val recyclerView: RecyclerView = findViewById(R.id.xmlRecyclerView)
+
+        val downloadData =  DownloadData(this, recyclerView)
+        downloadData.execute("http://ax.itunes.apple.com/WebObjects/MZStoreServices.woa/ws/RSS/topfreeapplications/limit=10/xml")
+
+        Log.d(TAG, "onCreate DONE")
     }
 
     companion object
     {
-        private class DownloadData : AsyncTask<String, Void, String>()
+        private class DownloadData(context: Context, recyclerView: RecyclerView) : AsyncTask<String, Void, String>()
         {
             private val TAG = "DownloadData"
 
+            var localContext: Context by Delegates.notNull()
+            var localRecyclerView: RecyclerView by Delegates.notNull()
+
+            init
+            {
+                localContext = context
+                localRecyclerView = recyclerView
+            }
             override fun doInBackground(vararg url: String?): String
             {
                 Log.d(TAG, "doInBackground")
@@ -55,10 +73,18 @@ class MainActivity : AppCompatActivity()
                 return rssFeed
             }
 
-            override fun onPostExecute(result: String?)
+            override fun onPostExecute(result: String)
             {
                 super.onPostExecute(result)
                 Log.d(TAG, "onPostExecute")
+
+                val parsedApplication = ParseApplication()
+                parsedApplication.parse(result)
+
+                //      ADAPTER
+                val adapter: ApplicationsAdapter = ApplicationsAdapter(localContext, parsedApplication.applications)
+                localRecyclerView.adapter = adapter
+                localRecyclerView.layoutManager = LinearLayoutManager(localContext)
             }
 
             private fun downloadXML(urlPath: String?): String
@@ -160,3 +186,4 @@ class MainActivity : AppCompatActivity()
         }// class DownloadData
     }// Companion Obj
 }
+
